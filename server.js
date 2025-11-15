@@ -6,7 +6,9 @@ const app = express();
 
 const cors = require('cors');
 
+const connectDB = require('./config/mongoDB');
 
+connectDB();
 
 app.use(cors({
     origin: '*',
