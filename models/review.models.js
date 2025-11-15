@@ -2,23 +2,23 @@ const mongoose = require('mongoose');
 
 
 const reviewSchema = mongoose.Schema({
-    comment: { 
-        type: String, 
-        required: true 
+    comment: {
+        type: String,
+        required: true
     },
 
     authorName: { type: String },
     authorProfile: { type: String },
 
-    platform: { 
-        type: String, 
+    platform: {
+        type: String,
         enum: ["instagram", "amazon"],
-        required: true 
+        required: true
     },
 
- 
-    rating: { 
-        type: Number 
+
+    rating: {
+        type: Number
     }, // only for Amazon. Instagram will be null.
 
     likes: {
@@ -34,8 +34,8 @@ const reviewSchema = mongoose.Schema({
 
     sentimentScore: { type: Number }, // optional but useful for charts (0-1)
 
-    createdAtPlatform: { 
-        type: Date 
+    createdAtPlatform: {
+        type: Date
     }, // the timestamp extracted from Instagram/Amazon
 
     product: {

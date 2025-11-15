@@ -15,7 +15,7 @@ connectDB();
 app.use(cors({
     origin: '*',
     credentials: true,
-}));    
+}));
 
 app.use(express.json());
 
@@ -30,9 +30,13 @@ const sentimentRoutes = require('./routes/sentiment.routes');
 
 const authRoutes = require('./routes/authRoutes');
 
+const productRoutes = require('./routes/product.routes');
+
 app.use('/api/v1/sentiment', sentimentRoutes);
 
 app.use('/api/v1/auth', authRoutes);
+
+app.use('/api/v1/product', productRoutes);
 
 app.listen(process.env.PORT || 3000, () => {
     console.log(`Server is running on port ${process.env.PORT || 3000}`);
