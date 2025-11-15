@@ -1,0 +1,75 @@
+Amazon Product 
+
+{
+  "_id": "677a1f298fe341c11223aa01",
+  "productName": "HRK Running Shoes",
+  "productUrl": "https://www.amazon.in/dp/B09XYZ1234",
+  "platform": "amazon",
+  "platformProductId": "B09XYZ1234",
+  "totalReviews": 4,
+  "positiveCount": 2,
+  "negativeCount": 1,
+  "neutralCount": 1,
+  "lastScraped": "2025-01-10T14:22:00.000Z",
+  "scrapeStatus": "success",
+  "reviews": [
+    "677a1f298fe341c11223bb01",
+    "677a1f298fe341c11223bb02",
+    "677a1f298fe341c11223bb03",
+    "677a1f298fe341c11223bb04"
+  ]
+}
+
+Instagram Product
+
+
+{
+  "_id": "677a1f298fe341c11223aa02",
+  "productName": "HRK Shoes - Promo Post",
+  "productUrl": "https://www.instagram.com/p/C1XYZ9KLMNO/",
+  "platform": "instagram",
+  "platformProductId": "C1XYZ9KLMNO",
+  "totalReviews": 3,
+  "positiveCount": 1,
+  "negativeCount": 1,
+  "neutralCount": 1,
+  "lastScraped": "2025-01-10T14:30:00.000Z",
+  "scrapeStatus": "success",
+  "reviews": [
+    "677a1f298fe341c11223cc01",
+    "677a1f298fe341c11223cc02",
+    "677a1f298fe341c11223cc03"
+  ]
+}
+
+Amazon Review Example:
+
+{
+  "_id": "677a1f298fe341c11223bb01",
+  "comment": "Great quality shoes! Very comfortable for running.",
+  "authorName": "Rakesh Kumar",
+  "authorProfile": "https://www.amazon.com/user/12345",
+  "platform": "amazon",
+  "reviewId": "R1AAA92KLM01",
+  "rating": 5,
+  "sentiment": "positive",
+  "sentimentScore": 0.91,
+  "createdAtPlatform": "2025-01-08T10:00:00.000Z",
+  "product": "677a1f298fe341c11223aa01"
+}
+
+Instagram Review Example:
+
+{
+  "_id": "677a1f298fe341c11223cc01",
+  "comment": "These shoes look amazing 🔥🔥",
+  "authorName": "fitness_guy",
+  "authorProfile": "https://instagram.com/fitness_guy",
+  "platform": "instagram",
+  "reviewId": "IGCMT001",
+  "rating": null,
+  "sentiment": "positive",
+  "sentimentScore": 0.89,
+  "createdAtPlatform": "2025-01-09T08:00:00.000Z",
+  "product": "677a1f298fe341c11223aa02"
+}
