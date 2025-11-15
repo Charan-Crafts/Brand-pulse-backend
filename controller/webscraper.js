@@ -49,8 +49,8 @@ const scrapeInstagramComments = async (postUrl, limit = 100) => {
 
 const scrapeComments = async (req, res) => {
     try {
-        const { instagramUrl, resultsLimit = 10, productName } = req.body;
-
+        const { instagramUrl, resultsLimit = 50 , productName } = req.body;
+        
         // Validate request
         if (!instagramUrl) {
             return res.status(400).json({
@@ -96,51 +96,60 @@ const scrapeComments = async (req, res) => {
             product.scrapeStatus = 'success';
         }
 
-        // Save comments as Reviews
-        const savedReviews = [];
-        for (const comment of result.userComments) {
-            // Check if review already exists (to avoid duplicates)
-            let review = await Review.findOne({
-                product: product._id,
-                comment: comment.text,
-                authorName: comment.userName,
-                platform: 'instagram'
-            });
+        // Get all existing comments for this product
+        const existingReviews = await Review.find({ product: product._id });
+        const existingCommentTexts = new Set(
+            existingReviews.map(review => review.comment.trim().toLowerCase())
+        );
 
-            if (!review) {
-                review = await Review.create({
-                    comment: comment.text,
-                    authorName: comment.userName,
-                    platform: 'instagram',
-                    likes: comment.likes || 0,
-                    createdAtPlatform: comment.timeStamp !== 'N/A' ? new Date(comment.timeStamp) : new Date(),
-                    product: product._id
-                });
-            } else {
-                // Update existing review with latest data
-                review.likes = comment.likes || 0;
-                if (comment.timeStamp !== 'N/A') {
-                    review.createdAtPlatform = new Date(comment.timeStamp);
-                }
-                await review.save();
-            }
-            savedReviews.push(review._id);
+        // Filter out comments that already exist
+        const newComments = result.userComments.filter(comment => {
+            const commentText = comment.text.trim().toLowerCase();
+            return !existingCommentTexts.has(commentText);
+        });
+
+        // If no new comments, return early
+        if (newComments.length === 0) {
+            return res.json({
+                success: true,
+                postId: result.postId,
+                postUrl: result.postUrl,
+                message: 'No new feedbacks',
+                newCommentsCount: 0,
+                totalCommentsInPost: result.totalComments,
+                totalCommentsInDB: existingReviews.length
+            });
         }
 
-        // Update product with reviews
-        product.reviews = savedReviews;
-        product.totalReviews = savedReviews.length;
+        // Save only new comments as Reviews
+        const newSavedReviews = [];
+        for (const comment of newComments) {
+            const review = await Review.create({
+                comment: comment.text,
+                authorName: comment.userName,
+                platform: 'instagram',
+                likes: comment.likes || 0,
+                createdAtPlatform: comment.timeStamp !== 'N/A' ? new Date(comment.timeStamp) : new Date(),
+                product: product._id
+            });
+            newSavedReviews.push(review._id);
+        }
+
+        // Update product with all reviews (existing + new)
+        const allReviewIds = [...existingReviews.map(r => r._id), ...newSavedReviews];
+        product.reviews = allReviewIds;
+        product.totalReviews = allReviewIds.length;
         await product.save();
 
-        // Automatically analyze sentiment for all comments
+        // Automatically analyze sentiment for only NEW comments
         let sentimentResults = null;
         try {
-            const commentTexts = result.userComments.map(c => c.text);
+            const newCommentTexts = newComments.map(c => c.text);
 
-            // Analyze sentiment using Hugging Face
+            // Analyze sentiment using Hugging Face for new comments only
             const results = await sentimentClient.textClassification({
                 model: "cardiffnlp/twitter-roberta-base-sentiment-latest",
-                inputs: commentTexts,
+                inputs: newCommentTexts,
             });
 
             const sentiments = results.map(result => {
@@ -153,14 +162,14 @@ const scrapeComments = async (req, res) => {
             });
 
             sentimentResults = sentiments.map((s, index) => ({
-                text: commentTexts[index],
+                text: newCommentTexts[index],
                 sentiment: s.label.toLowerCase(),
                 confidence: s.score
             }));
 
-            // Update reviews with sentiment data
-            for (let i = 0; i < savedReviews.length; i++) {
-                const review = await Review.findById(savedReviews[i]);
+            // Update new reviews with sentiment data
+            for (let i = 0; i < newSavedReviews.length; i++) {
+                const review = await Review.findById(newSavedReviews[i]);
                 if (review && sentimentResults[i]) {
                     review.sentiment = sentimentResults[i].sentiment;
                     review.sentimentScore = sentimentResults[i].confidence;
@@ -168,7 +177,7 @@ const scrapeComments = async (req, res) => {
                 }
             }
 
-            // Update product sentiment counts
+            // Update product sentiment counts from all reviews
             const allReviews = await Review.find({ product: product._id });
             product.positiveCount = allReviews.filter(r => r.sentiment === 'positive').length;
             product.negativeCount = allReviews.filter(r => r.sentiment === 'negative').length;
@@ -181,10 +190,21 @@ const scrapeComments = async (req, res) => {
         }
 
         res.json({
-            ...result,
+            success: true,
+            postId: result.postId,
+            postUrl: result.postUrl,
             saved: true,
             productId: product._id,
-            message: 'Comments saved to database successfully with sentiment analysis',
+            message: `${newComments.length} new comment(s) saved to database successfully with sentiment analysis`,
+            newComments: newComments.map(c => ({
+                userName: c.userName,
+                text: c.text,
+                timeStamp: c.timeStamp,
+                likes: c.likes
+            })),
+            newCommentsCount: newComments.length,
+            totalCommentsInPost: result.totalComments,
+            totalCommentsInDB: allReviewIds.length,
             sentimentAnalysis: sentimentResults || []
         });
 
