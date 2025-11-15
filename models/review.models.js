@@ -21,6 +21,11 @@ const reviewSchema = mongoose.Schema({
         type: Number 
     }, // only for Amazon. Instagram will be null.
 
+    likes: {
+        type: Number,
+        default: 0
+    }, // for Instagram comments
+
     sentiment: {
         type: String,
         enum: ["positive", "negative", "neutral"],
