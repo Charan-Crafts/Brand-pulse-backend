@@ -5,7 +5,7 @@ const router = express.Router();
 
 const sentimentController = require('../controller/sentiment');
 
-const webscraperController = require('../controller/webscraper,js');
+const webscraperController = require('../controller/webscraper.js');
 // Analyze  comment
 router.post('/analyze', sentimentController.sentiment);
 
