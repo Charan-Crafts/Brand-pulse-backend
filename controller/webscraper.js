@@ -49,8 +49,8 @@ const scrapeInstagramComments = async (postUrl, limit = 100) => {
 
 const scrapeComments = async (req, res) => {
     try {
-        const { instagramUrl, resultsLimit = 50 , productName } = req.body;
-        
+        const { instagramUrl, resultsLimit = 50, productName } = req.body;
+
         // Validate request
         if (!instagramUrl) {
             return res.status(400).json({

@@ -70,6 +70,17 @@ const getProductReviews = async (req, res) => {
     }
 };
 
+const getProductCategories = async (req, res) => {
+    try {
+        const categories = await Product.find().select('productName _id');
+        res.json(categories);
+    } catch (error) {
+        console.error("Error fetching product categories:", error);
+        res.status(500).json({ error: "Failed to fetch product categories" });
+    }
+};
+
 module.exports = {
-    getProductReviews
+    getProductReviews,
+    getProductCategories
 };
