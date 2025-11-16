@@ -49,7 +49,7 @@ const scrapeInstagramComments = async (postUrl, limit = 100) => {
 
 const scrapeComments = async (req, res) => {
     try {
-        const { instagramUrl, resultsLimit = 50, productName } = req.body;
+        const { instagramUrl, resultsLimit = 100, productName } = req.body;
 
         // Validate request
         if (!instagramUrl) {
@@ -98,32 +98,62 @@ const scrapeComments = async (req, res) => {
 
         // Get all existing comments for this product
         const existingReviews = await Review.find({ product: product._id });
-        const existingCommentTexts = new Set(
-            existingReviews.map(review => review.comment.trim().toLowerCase())
+
+        // Create a set of existing comments using composite key (text + author + timestamp)
+        // to avoid saving exact duplicates
+        const existingCommentKeys = new Set(
+            existingReviews.map(review => {
+                const text = (review.comment || '').trim().toLowerCase();
+                const author = (review.authorName || '').trim().toLowerCase();
+                const timestamp = review.createdAtPlatform ? new Date(review.createdAtPlatform).getTime() : 0;
+                return `${text}|||${author}|||${timestamp}`;
+            })
         );
 
+        // OLD FILTER LOGIC - COMMENTED OUT
         // Filter out comments that already exist
-        const newComments = result.userComments.filter(comment => {
-            const commentText = comment.text.trim().toLowerCase();
-            return !existingCommentTexts.has(commentText);
+        // const newComments = result.userComments.filter(comment => {
+        //     const commentText = comment.text.trim().toLowerCase();
+        //     return !existingCommentTexts.has(commentText);
+        // });
+
+        // Process all comments - only skip exact duplicates (same text + author + timestamp)
+        const commentsToSave = result.userComments.filter(comment => {
+            // Parse timestamp
+            let timestamp = Date.now();
+            if (comment.timeStamp && comment.timeStamp !== 'N/A') {
+                try {
+                    timestamp = new Date(comment.timeStamp).getTime();
+                } catch (e) {
+                    timestamp = Date.now();
+                }
+            }
+
+            // Create composite key
+            const text = (comment.text || '').trim().toLowerCase();
+            const author = (comment.userName || '').trim().toLowerCase();
+            const compositeKey = `${text}|||${author}|||${timestamp}`;
+
+            // Only skip if exact duplicate exists
+            return !existingCommentKeys.has(compositeKey);
         });
 
-        // If no new comments, return early
-        if (newComments.length === 0) {
+        // If no new comments to save, return early
+        if (commentsToSave.length === 0) {
             return res.json({
                 success: true,
                 postId: result.postId,
                 postUrl: result.postUrl,
-                message: 'No new feedbacks',
+                message: 'All comments already exist in database',
                 newCommentsCount: 0,
                 totalCommentsInPost: result.totalComments,
                 totalCommentsInDB: existingReviews.length
             });
         }
 
-        // Save only new comments as Reviews
+        // Save all comments that aren't exact duplicates
         const newSavedReviews = [];
-        for (const comment of newComments) {
+        for (const comment of commentsToSave) {
             const review = await Review.create({
                 comment: comment.text,
                 authorName: comment.userName,
@@ -141,10 +171,10 @@ const scrapeComments = async (req, res) => {
         product.totalReviews = allReviewIds.length;
         await product.save();
 
-        // Automatically analyze sentiment for only NEW comments
+        // Automatically analyze sentiment for all new comments
         let sentimentResults = null;
         try {
-            const newCommentTexts = newComments.map(c => c.text);
+            const newCommentTexts = commentsToSave.map(c => c.text);
 
             // Analyze sentiment using Hugging Face for new comments only
             const results = await sentimentClient.textClassification({
@@ -195,14 +225,14 @@ const scrapeComments = async (req, res) => {
             postUrl: result.postUrl,
             saved: true,
             productId: product._id,
-            message: `${newComments.length} new comment(s) saved to database successfully with sentiment analysis`,
-            newComments: newComments.map(c => ({
+            message: `${commentsToSave.length} new comment(s) saved to database successfully with sentiment analysis`,
+            newComments: commentsToSave.map(c => ({
                 userName: c.userName,
                 text: c.text,
                 timeStamp: c.timeStamp,
                 likes: c.likes
             })),
-            newCommentsCount: newComments.length,
+            newCommentsCount: commentsToSave.length,
             totalCommentsInPost: result.totalComments,
             totalCommentsInDB: allReviewIds.length,
             sentimentAnalysis: sentimentResults || []

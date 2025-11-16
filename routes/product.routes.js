@@ -14,6 +14,9 @@ router.get('/reviews', authenticate, productController.getAllReviews);
 // Get all reviews and comments for a product by product ID
 router.get('/:productId/reviews', authenticate, productController.getProductReviews);
 
+// Fetch latest comments for a specific product
+router.post('/:productId/fetch-latest', authenticate, productController.fetchLatestComments);
+
 router.get("/categories", authenticate, productController.getProductCategories);
 
 module.exports = router;

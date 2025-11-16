@@ -38,6 +38,10 @@ app.use('/api/v1/auth', authRoutes);
 
 app.use('/api/v1/product', productRoutes);
 
+// Start cron job for fetching latest comments
+const { startCronJob } = require('./services/cronJob');
+startCronJob();
+
 app.listen(process.env.PORT || 3000, () => {
     console.log(`Server is running on port ${process.env.PORT || 3000}`);
 });

@@ -1,6 +1,7 @@
 const Product = require('../models/products.model');
 const Review = require('../models/review.models');
 const webscraperController = require('./webscraper');
+const { fetchLatestCommentsForProduct } = require('../services/cronJob');
 
 // Get all reviews and comments for a specific product
 const getProductReviews = async (req, res) => {
@@ -312,9 +313,96 @@ const getAllReviews = async (req, res) => {
     }
 };
 
+// Fetch latest comments for a specific product
+const fetchLatestComments = async (req, res) => {
+    try {
+        const { productId } = req.params;
+
+        // Validate productId
+        if (!productId) {
+            return res.status(400).json({
+                error: 'Product ID is required'
+            });
+        }
+
+        // Find the product
+        const product = await Product.findById(productId);
+
+        if (!product) {
+            return res.status(404).json({
+                error: 'Product not found'
+            });
+        }
+
+        if (product.platform !== 'instagram') {
+            return res.status(400).json({
+                error: 'This endpoint only works for Instagram products'
+            });
+        }
+
+        // Fetch latest comments
+        const result = await fetchLatestCommentsForProduct(product);
+
+        if (!result.success) {
+            return res.status(500).json({
+                error: 'Failed to fetch latest comments',
+                details: result.message
+            });
+        }
+
+        // Get updated reviews
+        const reviews = await Review.find({ product: productId })
+            .sort({ createdAtPlatform: -1 });
+
+        // Get updated product
+        const updatedProduct = await Product.findById(productId);
+
+        res.json({
+            success: true,
+            message: result.message,
+            newCommentsCount: result.newCommentsCount || 0,
+            product: {
+                id: updatedProduct._id,
+                productName: updatedProduct.productName,
+                productUrl: updatedProduct.productUrl,
+                platform: updatedProduct.platform,
+                totalReviews: updatedProduct.totalReviews,
+                positiveCount: updatedProduct.positiveCount,
+                negativeCount: updatedProduct.negativeCount,
+                neutralCount: updatedProduct.neutralCount,
+                lastScraped: updatedProduct.lastScraped,
+                scrapeStatus: updatedProduct.scrapeStatus
+            },
+            reviews: reviews.map(review => ({
+                id: review._id,
+                comment: review.comment,
+                authorName: review.authorName,
+                authorProfile: review.authorProfile,
+                platform: review.platform,
+                rating: review.rating,
+                likes: review.likes,
+                sentiment: review.sentiment,
+                sentimentScore: review.sentimentScore,
+                createdAtPlatform: review.createdAtPlatform,
+                createdAt: review.createdAt,
+                updatedAt: review.updatedAt
+            })),
+            totalReviews: reviews.length
+        });
+
+    } catch (error) {
+        console.error("Error fetching latest comments:", error);
+        res.status(500).json({
+            error: 'Failed to fetch latest comments',
+            details: error.message
+        });
+    }
+};
+
 module.exports = {
     getProductReviews,
     getProductCategories,
     createProduct,
-    getAllReviews
+    getAllReviews,
+    fetchLatestComments
 };
